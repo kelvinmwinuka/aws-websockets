@@ -1,0 +1,16 @@
+{
+  "name": "aws-websockets",
+  "version": "1.0.0",
+  "description": "Amazon websocket api tutorial",
+  "main": "handler.js",
+  "scripts": {
+    "start": "nodemon --exec sls offline",
+    "deploy:dev": "sls deploy --aws-profile playground-admin deploy --stage dev",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Kelvin Clement Mwinuka",
+  "license": "ISC",
+  "dependencies": {
+    "serverless-offline": "^11.2.1"
+  }
+}

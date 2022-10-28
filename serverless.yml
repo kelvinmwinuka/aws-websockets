@@ -2,9 +2,13 @@ service: aws-websockets
 
 frameworkVersion: '3'
 
+plugins:
+  - serverless-offline
+
 provider:
   name: aws
   runtime: nodejs14.x
+  stage: ${opt:stage, "dev"}
   websocketsApiRouteSelectionExpression: $request.body.action
 
 functions:
@@ -13,15 +17,18 @@ functions:
     events:
       - websocket:
           route: $default
+          cors: true
 
   wsConnectHandler:
-    handler: ./src/connection.handler
+    handler: ./src/connect.handler
     events:
       - websocket:
           route: $connect
+          cors: true
 
   wsDisconnectHandler:
     handler: ./src/disconnect.handler
     events:
       - websocket:
           route: $disconnect
+          cors: true
