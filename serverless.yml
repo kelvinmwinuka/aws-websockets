@@ -1,0 +1,27 @@
+service: aws-websockets
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  websocketsApiRouteSelectionExpression: $request.body.action
+
+functions:
+  wsDefaultHandler:
+    handler: ./src/default.handler
+    events:
+      - websocket:
+          route: $default
+
+  wsConnectHandler:
+    handler: ./src/connection.handler
+    events:
+      - websocket:
+          route: $connect
+
+  wsDisconnectHandler:
+    handler: ./src/disconnect.handler
+    events:
+      - websocket:
+          route: $disconnect
