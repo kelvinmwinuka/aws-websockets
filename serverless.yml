@@ -4,12 +4,17 @@ frameworkVersion: '3'
 
 plugins:
   - serverless-offline
+  - serverless-plugin-custom-roles
 
 provider:
   name: aws
   runtime: nodejs14.x
   stage: ${opt:stage, "dev"}
+  region: ${opt:region, "us-east-1"}
   websocketsApiRouteSelectionExpression: $request.body.action
+  environment:
+    REGION: ${opt:region, "us-east-1"}
+    CONNECTION_TABLE: !Ref ConnectionsTable
 
 functions:
   wsDefaultHandler:
@@ -17,18 +22,38 @@ functions:
     events:
       - websocket:
           route: $default
-          cors: true
 
   wsConnectHandler:
     handler: ./src/connect.handler
     events:
       - websocket:
           route: $connect
-          cors: true
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action: "dynamodb:PutItem"
+        Resource: !GetAtt [ConnectionsTable, Arn]
 
   wsDisconnectHandler:
     handler: ./src/disconnect.handler
     events:
       - websocket:
           route: $disconnect
-          cors: true
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action: "dynamodb:DeleteItem"
+        Resource: !GetAtt [ConnectionsTable, Arn]
+    
+resources:  
+  Resources:
+    ConnectionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: ConnectionId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: ConnectionId
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
