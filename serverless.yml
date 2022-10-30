@@ -40,8 +40,12 @@ functions:
           route: $disconnect
     iamRoleStatements:
       - Effect: "Allow"
-        Action: "dynamodb:DeleteItem"
-        Resource: !GetAtt [ConnectionsTable, Arn]
+        Action: 
+          - "dynamodb:DeleteItem"
+          - "dynamodb:Query"
+        Resource: 
+          - !GetAtt [ConnectionsTable, Arn]
+          - !Join ["/", [!GetAtt [ConnectionsTable, Arn], "index", "ConnectionIdIndex"]]
 
   wsSendMessage:
     handler: ./src/sendMessage.handler
