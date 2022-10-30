@@ -42,6 +42,35 @@ functions:
       - Effect: "Allow"
         Action: "dynamodb:DeleteItem"
         Resource: !GetAtt [ConnectionsTable, Arn]
+
+  wsSendMessage:
+    handler: ./src/sendMessage.handler
+    events:
+      - websocket:
+          route: "sendMessage"
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action: "dynamodb:Query"
+        Resource:
+          - !GetAtt [ConnectionsTable, Arn]
+          - !Join ["/", [!GetAtt [ConnectionsTable, Arn], "index", "ConnectionIdIndex"]]
+      - Effect: "Allow"
+        Action: "execute-api:ManageConnections"
+        Resource:
+          - Fn::Join:
+            - "/"
+            -
+              - Fn::Join:
+                - ":"
+                -
+                  - "arn:aws:execute-api"
+                  - ${opt:region, "us-east-1"}
+                  - !Ref AWS::AccountId
+                  - !Ref WebsocketsApi
+              - ${opt:stage, 'dev'}
+              - "POST"
+              - "@connections"
+              - "{connectionId}"
     
 resources:  
   Resources:
@@ -49,11 +78,24 @@ resources:
       Type: AWS::DynamoDB::Table
       Properties:
         AttributeDefinitions:
+          - AttributeName: Username
+            AttributeType: S
           - AttributeName: ConnectionId
             AttributeType: S
         KeySchema:
-          - AttributeName: ConnectionId
+          - AttributeName: Username
             KeyType: HASH
         ProvisionedThroughput:
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
+        GlobalSecondaryIndexes:
+          - IndexName: ConnectionIdIndex
+            KeySchema:
+              - AttributeName: ConnectionId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+            ProvisionedThroughput:
+                ReadCapacityUnits: 1
+                WriteCapacityUnits: 1
+                

@@ -2,7 +2,8 @@
 
 const {
   DynamoDB,
-  DeleteItemCommand
+  DeleteItemCommand,
+  QueryCommand
 } = require("@aws-sdk/client-dynamodb");
 
 const {

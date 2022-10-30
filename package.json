@@ -11,6 +11,7 @@
   "author": "Kelvin Clement Mwinuka",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-apigatewaymanagementapi": "^3.199.0",
     "@aws-sdk/client-dynamodb": "^3.199.0",
     "serverless-offline": "^11.2.1",
     "serverless-plugin-custom-roles": "^3.1.0"
