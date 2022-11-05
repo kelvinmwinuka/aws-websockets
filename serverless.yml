@@ -3,6 +3,7 @@ service: aws-websockets
 frameworkVersion: '3'
 
 plugins:
+  - serverless-plugin-typescript
   - serverless-offline
   - serverless-plugin-custom-roles
 

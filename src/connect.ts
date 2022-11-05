@@ -1,19 +1,17 @@
-"use strict";
-
-const {
-  DynamoDB,
+import {
+  DynamoDBClient,
   PutItemCommand
-} = require("@aws-sdk/client-dynamodb");
+} from "@aws-sdk/client-dynamodb";
 
 const {
   REGION,
   CONNECTION_TABLE
 } = process.env;
 
-module.exports.handler = async (event, context) => {
+module.exports.handler = async (event) => {
   console.log(event);
 
-  const dynamoDBClient = new DynamoDB({ region: REGION });
+  const dynamoDBClient = new DynamoDBClient({ region: REGION });
   const putItemCommand = new PutItemCommand({
     TableName: CONNECTION_TABLE,
     Item: {
@@ -23,10 +21,5 @@ module.exports.handler = async (event, context) => {
   });
   await dynamoDBClient.send(putItemCommand);
 
-  return {
-    statusCode: 200,
-    body: JSON.stringify({
-      message: "Connection established!"
-    })
-  };
+  return { statusCode: 200 };
 }

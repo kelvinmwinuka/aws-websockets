@@ -1,20 +1,19 @@
-"use strict";
-
-const {
-  DynamoDB,
+import {
+  DynamoDBClient,
   DeleteItemCommand,
-  QueryCommand
-} = require("@aws-sdk/client-dynamodb");
+  QueryCommand,
+  QueryCommandOutput,
+} from "@aws-sdk/client-dynamodb";
 
 const {
   REGION,
   CONNECTION_TABLE
 } = process.env;
 
-module.exports.handler = async (event) => {
+module.exports.handler = async (event, context, callback) => {
   console.log(event);
 
-  const dynamoDBClient = new DynamoDB({ region: REGION });
+  const dynamoDBClient = new DynamoDBClient({ region: REGION });
 
   // Retrieve the connection using the connectionId
   const queryCommand = new QueryCommand({
@@ -25,13 +24,14 @@ module.exports.handler = async (event) => {
       ":a": { S: event.requestContext.connectionId }
     }
   })
+  
   const queryResult = await dynamoDBClient.send(queryCommand);
-  const connectionRecord = queryResult.Items[0];
+  const connectionRecord = queryResult?.Items ? queryResult.Items[0] : undefined;
 
   const deleteItemCommand = new DeleteItemCommand({
     TableName: CONNECTION_TABLE,
     Key: {
-      Username: { S: connectionRecord.Username.S }
+      Username: { S : connectionRecord?.Username?.S ? connectionRecord?.Username?.S : "" }
     }
   });
   await dynamoDBClient.send(deleteItemCommand);

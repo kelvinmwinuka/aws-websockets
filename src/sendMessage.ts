@@ -1,26 +1,21 @@
-"use strict";
+import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
 
-const {
-  DynamoDB,
-  QueryCommand,
-} = require("@aws-sdk/client-dynamodb");
-
-const {
+import {
   ApiGatewayManagementApiClient,
   PostToConnectionCommand
-} = require("@aws-sdk/client-apigatewaymanagementapi");
+} from "@aws-sdk/client-apigatewaymanagementapi";
 
 const {
   REGION,
   CONNECTION_TABLE
 } = process.env;
 
-module.exports.handler = async (event) => {
+module.exports.handler = async (event, context, callback) => {
   console.log(event);
 
   const body = JSON.parse(event.body);
 
-  const dynamoDBClient = new DynamoDB({ region: REGION });
+  const dynamoDBClient = new DynamoDBClient({ region: REGION });
 
   // Get target websocket connection based on recepient stated in message body.
   let queryResult = await dynamoDBClient.send(new QueryCommand({
@@ -30,10 +25,15 @@ module.exports.handler = async (event) => {
       ":a": { S: body.recepient}
     }
   }));
-  const recepientConnection = queryResult.Items[0];
-  console.log(recepientConnection);
+  
+  if (!(queryResult?.Items?.length && queryResult?.Items?.length > 0)) return callback(JSON.stringify({
+    message: "Recepient not found",
+    queryResult
+  }));
 
-  // Get sender username based on the current connection
+  const recepientConnection =  queryResult.Items[0];
+
+  // Get sender username using the current connection id
   queryResult = await dynamoDBClient.send(new QueryCommand({
     TableName: CONNECTION_TABLE,
     IndexName: "ConnectionIdIndex",
@@ -42,7 +42,12 @@ module.exports.handler = async (event) => {
       ":b": { S: event.requestContext.connectionId }
     },
   }));
-  const senderConnection = queryResult.Items[0];
+
+  if (!(queryResult?.Items?.length && queryResult?.Items?.length > 0)) return callback({
+    message: "Sender not found"
+  });
+
+  const senderConnection = queryResult?.Items ? queryResult.Items[0]: undefined;
 
   // Send message to the connection
   const apiGatewayManagementApiClient = new ApiGatewayManagementApiClient({ 
@@ -50,16 +55,16 @@ module.exports.handler = async (event) => {
     endpoint: `https://${event.requestContext.domainName}/${event.requestContext.stage}/`
   });
   const postToConnectionCommand = new PostToConnectionCommand({
-    ConnectionId: recepientConnection.ConnectionId.S,
+    ConnectionId: recepientConnection?.ConnectionId.S,
     Data: Buffer.from(JSON.stringify({
-      from: senderConnection.Username.S,
+      from: senderConnection?.Username.S,
       message: body.message
-    }), "utf-8").toString()
+    }), "utf-8")
   });
   await apiGatewayManagementApiClient.send(postToConnectionCommand);
 
-  return {
+  return { 
     statusCode: 200,
-    body: JSON.stringify({ message: "Message sent succesfully!" })
+    body: JSON.stringify({ message: "Message sent." })
   };
 }
