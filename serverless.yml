@@ -2,21 +2,41 @@ service: aws-websockets
 
 frameworkVersion: '3'
 
+useDotenv: true
+
 plugins:
+  - serverless-dotenv-plugin
   - serverless-plugin-typescript
   - serverless-offline
   - serverless-plugin-custom-roles
+  - serverless-localstack
+
+custom:
+  localstack:
+    stages:
+      - local
+    host: http://localhost
+    edgePort: 4566
+    autostart: true
+    lambda:
+      mountCode: True
+  CONNECTION_TABLE:
+    local: "ConnectionTable"
+    dev: !Ref ConnectionsTable 
 
 provider:
   name: aws
   runtime: nodejs14.x
-  stage: ${opt:stage, "dev"}
+  profile: ${env:PROFILE, "localstack"}
+  stage: ${opt:stage, "local"}
   region: ${opt:region, "us-east-1"}
   websocketsApiRouteSelectionExpression: $request.body.action
   environment:
+    STAGE: ${opt:stage, "local"}
     REGION: ${opt:region, "us-east-1"}
-    CONNECTION_TABLE: !Ref ConnectionsTable
-
+    CONNECTION_TABLE: ${self:custom.CONNECTION_TABLE.${opt:stage, "local"}}
+    LOCALSTACK_ENDPOINT: "http://localhost:4566"
+    
 functions:
   wsDefaultHandler:
     handler: ./src/default.handler

@@ -2,18 +2,24 @@ import {
   DynamoDBClient,
   DeleteItemCommand,
   QueryCommand,
-  QueryCommandOutput,
 } from "@aws-sdk/client-dynamodb";
 
 const {
+  STAGE,
   REGION,
-  CONNECTION_TABLE
+  CONNECTION_TABLE,
+  LOCALSTACK_ENDPOINT
 } = process.env;
+
+const getDynamoDbConfig = (): { region: string, endpoint?: string } => {
+  if (STAGE === "local") return { region: REGION, endpoint: LOCALSTACK_ENDPOINT };
+  return { region: REGION };
+}
 
 module.exports.handler = async (event, context, callback) => {
   console.log(event);
 
-  const dynamoDBClient = new DynamoDBClient({ region: REGION });
+  const dynamoDBClient = new DynamoDBClient(getDynamoDbConfig());
 
   // Retrieve the connection using the connectionId
   const queryCommand = new QueryCommand({

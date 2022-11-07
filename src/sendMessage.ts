@@ -6,16 +6,23 @@ import {
 } from "@aws-sdk/client-apigatewaymanagementapi";
 
 const {
+  STAGE,
   REGION,
-  CONNECTION_TABLE
+  CONNECTION_TABLE,
+  LOCALSTACK_ENDPOINT
 } = process.env;
+
+const getDynamoDbConfig = (): { region: string, endpoint?: string } => {
+  if (STAGE === "local") return { region: REGION, endpoint: LOCALSTACK_ENDPOINT };
+  return { region: REGION };
+}
 
 module.exports.handler = async (event, context, callback) => {
   console.log(event);
 
   const body = JSON.parse(event.body);
 
-  const dynamoDBClient = new DynamoDBClient({ region: REGION });
+  const dynamoDBClient = new DynamoDBClient(getDynamoDbConfig());
 
   // Get target websocket connection based on recepient stated in message body.
   let queryResult = await dynamoDBClient.send(new QueryCommand({
@@ -52,7 +59,10 @@ module.exports.handler = async (event, context, callback) => {
   // Send message to the connection
   const apiGatewayManagementApiClient = new ApiGatewayManagementApiClient({ 
     region: REGION,
-    endpoint: `https://${event.requestContext.domainName}/${event.requestContext.stage}/`
+    
+    endpoint: STAGE === "local" ? 
+    `http://${event.requestContext.domainName}:3001` : 
+    `https://${event.requestContext.domainName}/${event.requestContext.stage}/`
   });
   const postToConnectionCommand = new PostToConnectionCommand({
     ConnectionId: recepientConnection?.ConnectionId.S,
@@ -61,7 +71,11 @@ module.exports.handler = async (event, context, callback) => {
       message: body.message
     }), "utf-8")
   });
-  await apiGatewayManagementApiClient.send(postToConnectionCommand);
+  try{
+    await apiGatewayManagementApiClient.send(postToConnectionCommand);
+  } catch (error) {
+    console.log(error);
+  }
 
   return { 
     statusCode: 200,
