@@ -9,12 +9,19 @@ const {
   STAGE,
   REGION,
   CONNECTION_TABLE,
-  LOCALSTACK_ENDPOINT
+  LOCALSTACK_ENDPOINT,
+  PORT
 } = process.env;
 
 const getDynamoDbConfig = (): { region: string, endpoint?: string } => {
   if (STAGE === "local") return { region: REGION, endpoint: LOCALSTACK_ENDPOINT };
   return { region: REGION };
+}
+
+const getConnectionEndpoint = (event) => {
+  return STAGE === "local" ? 
+  `http://${event.requestContext.domainName}:${PORT}` :
+  `https://${event.requestContext.domainName}/${event.requestContext.stage}/`
 }
 
 module.exports.handler = async (event, context, callback) => {
@@ -24,7 +31,10 @@ module.exports.handler = async (event, context, callback) => {
 
   const dynamoDBClient = new DynamoDBClient(getDynamoDbConfig());
 
-  // Get target websocket connection based on recepient stated in message body.
+  /**
+   * Query the connection table for the TARGET connection record.
+   * The recepient's username used in the query will be included in the event body.
+   */
   let queryResult = await dynamoDBClient.send(new QueryCommand({
     TableName: CONNECTION_TABLE,
     KeyConditionExpression: "Username = :a",
@@ -33,6 +43,7 @@ module.exports.handler = async (event, context, callback) => {
     }
   }));
   
+  // Return early if the recepient is not found in the connections table.
   if (!(queryResult?.Items?.length && queryResult?.Items?.length > 0)) return callback(JSON.stringify({
     message: "Recepient not found",
     queryResult
@@ -40,7 +51,11 @@ module.exports.handler = async (event, context, callback) => {
 
   const recepientConnection =  queryResult.Items[0];
 
-  // Get sender username using the current connection id
+  /**
+   * Query ConnectionIdIndex using the connection id of the sender.
+   * The senders connection id can be found in event.requestContext.connectionId.
+   * We retrieve this connection record in order to retrieve the sender's username.
+   */
   queryResult = await dynamoDBClient.send(new QueryCommand({
     TableName: CONNECTION_TABLE,
     IndexName: "ConnectionIdIndex",
@@ -50,20 +65,20 @@ module.exports.handler = async (event, context, callback) => {
     },
   }));
 
+  // Return early if no actively connected sender is found.
   if (!(queryResult?.Items?.length && queryResult?.Items?.length > 0)) return callback({
     message: "Sender not found"
   });
 
   const senderConnection = queryResult?.Items ? queryResult.Items[0]: undefined;
 
-  // Send message to the connection
+  
   const apiGatewayManagementApiClient = new ApiGatewayManagementApiClient({ 
     region: REGION,
-    
-    endpoint: STAGE === "local" ? 
-    `http://${event.requestContext.domainName}:3001` : 
-    `https://${event.requestContext.domainName}/${event.requestContext.stage}/`
+    endpoint: getConnectionEndpoint(event)
   });
+
+  // Post a message to the recipient's connection.
   const postToConnectionCommand = new PostToConnectionCommand({
     ConnectionId: recepientConnection?.ConnectionId.S,
     Data: Buffer.from(JSON.stringify({

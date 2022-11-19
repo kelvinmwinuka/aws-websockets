@@ -36,6 +36,7 @@ provider:
     REGION: ${opt:region, "us-east-1"}
     CONNECTION_TABLE: ${self:custom.CONNECTION_TABLE.${opt:stage, "local"}}
     LOCALSTACK_ENDPOINT: "http://localhost:4566"
+    PORT: ${env:PORT, "3001"}
     
 functions:
   wsDefaultHandler:
