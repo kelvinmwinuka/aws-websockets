@@ -46,7 +46,7 @@ module.exports.handler = async (event, context, callback) => {
   // Return early if the recepient is not found in the connections table.
   if (!(queryResult?.Items?.length && queryResult?.Items?.length > 0)) return callback(JSON.stringify({
     message: "Recepient not found",
-    queryResult
+    body
   }));
 
   const recepientConnection =  queryResult.Items[0];
@@ -66,9 +66,10 @@ module.exports.handler = async (event, context, callback) => {
   }));
 
   // Return early if no actively connected sender is found.
-  if (!(queryResult?.Items?.length && queryResult?.Items?.length > 0)) return callback({
-    message: "Sender not found"
-  });
+  if (!(queryResult?.Items?.length && queryResult?.Items?.length > 0)) return callback(JSON.stringify({
+    message: "Sender not found",
+    context: event.requestContext
+  }));
 
   const senderConnection = queryResult?.Items ? queryResult.Items[0]: undefined;
 
